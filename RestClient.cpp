@@ -33,52 +33,52 @@ RestClient& RestClient::setClient(Client& client) {
 
 // GET path
 int RestClient::get(const char* path) {
-  return request("GET", path, NULL, NULL);
+  return request("GET", path, NULL, NULL, 0);
 }
 
 //GET path with response
-int RestClient::get(const char* path, char* response) {
-  return request("GET", path, NULL, response);
+int RestClient::get(const char* path, char* response, int length) {
+  return request("GET", path, NULL, response, length);
 }
 
 // POST path and body
 int RestClient::post(const char* path, const char* body) {
-  return request("POST", path, body, NULL);
+  return request("POST", path, body, NULL, 0);
 }
 
 // POST path and body with response
-int RestClient::post(const char* path, const char* body, char* response) {
-  return request("POST", path, body, response);
+int RestClient::post(const char* path, const char* body, char* response, int length) {
+  return request("POST", path, body, response, length);
 }
 
 // PUT path and body
 int RestClient::put(const char* path, const char* body) {
-  return request("PUT", path, body, NULL);
+  return request("PUT", path, body, NULL, 0);
 }
 
 // PUT path and body with response
-int RestClient::put(const char* path, const char* body, char* response) {
-  return request("PUT", path, body, response);
+int RestClient::put(const char* path, const char* body, char* response, int length) {
+  return request("PUT", path, body, response, length);
 }
 
 // DELETE path
 int RestClient::del(const char* path) {
-  return request("DELETE", path, NULL, NULL);
+  return request("DELETE", path, NULL, NULL, 0);
 }
 
 // DELETE path and response
-int RestClient::del(const char* path, char* response) {
-  return request("DELETE", path, NULL, response);
+int RestClient::del(const char* path, char* response, int length) {
+  return request("DELETE", path, NULL, response, length);
 }
 
 // DELETE path and body
 int RestClient::del(const char* path, const char* body) {
-  return request("DELETE", path, body, NULL);
+  return request("DELETE", path, body, NULL, 0);
 }
 
 // DELETE path and body with response
-int RestClient::del(const char* path, const char* body, char* response) {
-  return request("DELETE", path, body, response);
+int RestClient::del(const char* path, const char* body, char* response, int length) {
+  return request("DELETE", path, body, response, length);
 }
 
 void RestClient::write(const char* string) {
@@ -100,7 +100,7 @@ RestClient& RestClient::setContentType(const char* contentTypeValue) {
 // The mother- generic request method.
 //
 int RestClient::request(const char* method, const char* path,
-  const char* body, char* response) {
+  const char* body, char* response, int length) {
 
   HTTP_DEBUG_PRINT("HTTP: connect\n");
 
@@ -146,7 +146,7 @@ int RestClient::request(const char* method, const char* path,
   client->flush();
 
   HTTP_DEBUG_PRINT("HTTP: call readResponse\n");
-  int statusCode = readResponse(response);
+  int statusCode = readResponse(response, length);
   HTTP_DEBUG_PRINT("HTTP: return readResponse\n");
 
   //cleanup
@@ -159,7 +159,7 @@ int RestClient::request(const char* method, const char* path,
   return statusCode;
 }
 
-int RestClient::readResponse(char* response) {
+int RestClient::readResponse(char* response, int length) {
 
   // an http request ends with a blank line
   boolean currentLineIsBlank = true;
@@ -169,11 +169,11 @@ int RestClient::readResponse(char* response) {
   char statusCode[4];
   int i = 0;
   int code = 0;
-  size_t responseSize = response ? sizeof(response) : 0;
 
   if (response) {
-    memset(response, 0, responseSize);
+    memset(response, 0, length);
   }
+	int writeIdx = 0;
 
   if (response == NULL) {
     HTTP_DEBUG_PRINT("HTTP: NULL RESPONSE POINTER: \n");
@@ -184,7 +184,6 @@ int RestClient::readResponse(char* response) {
   HTTP_DEBUG_PRINT("HTTP: RESPONSE: \n");
   while (client->connected()) {
     HTTP_DEBUG_PRINT(".");
-    int writeIdx = 0;
 
     if (client->available()) {
       HTTP_DEBUG_PRINT(",");
@@ -205,7 +204,7 @@ int RestClient::readResponse(char* response) {
         code = atoi(statusCode);
       }
 
-      if (response && httpBody && writeIdx <= responseSize) {
+      if (response && httpBody && writeIdx < length - 1) {
         response[writeIdx++] = c;
       } else {
         if (c == '\n' && currentLineIsBlank) {
