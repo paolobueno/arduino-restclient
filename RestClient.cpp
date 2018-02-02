@@ -1,13 +1,5 @@
 #include "RestClient.h"
 
-#ifdef HTTP_DEBUG
-#define HTTP_DEBUG_PRINT(string) (Serial.print(string))
-#endif
-
-#ifndef HTTP_DEBUG
-#define HTTP_DEBUG_PRINT(string)
-#endif
-
 #define DEFAULT_MIME "application/x-www-form-urlencoded"
 
 RestClient::RestClient(const char* _host, Client& client) {
@@ -82,7 +74,6 @@ int RestClient::del(const char* path, const char* body, char* response, int leng
 }
 
 void RestClient::write(const char* string) {
-  HTTP_DEBUG_PRINT(string);
   client->print(string);
 }
 
@@ -102,14 +93,10 @@ RestClient& RestClient::setContentType(const char* contentTypeValue) {
 int RestClient::request(const char* method, const char* path,
   const char* body, char* response, int length) {
 
-  HTTP_DEBUG_PRINT("HTTP: connect\n");
 
   if (!client->connect(host, port)) {
-    HTTP_DEBUG_PRINT("HTTP Connection failed\n");
     return 0;
   }
-  HTTP_DEBUG_PRINT("HTTP: connected\n");
-  HTTP_DEBUG_PRINT("REQUEST: \n");
   // Make a HTTP request line:
   write(method);
   write(" ");
@@ -145,16 +132,12 @@ int RestClient::request(const char* method, const char* path,
   //make sure you write all those bytes.
   client->flush();
 
-  HTTP_DEBUG_PRINT("HTTP: call readResponse\n");
   int statusCode = readResponse(response, length);
-  HTTP_DEBUG_PRINT("HTTP: return readResponse\n");
 
   //cleanup
-  HTTP_DEBUG_PRINT("HTTP: stop client\n");
   num_headers = 0;
   client->stop();
   delay(50);
-  HTTP_DEBUG_PRINT("HTTP: client stopped\n");
 
   return statusCode;
 }
@@ -176,20 +159,14 @@ int RestClient::readResponse(char* response, int length) {
 	int writeIdx = 0;
 
   if (response == NULL) {
-    HTTP_DEBUG_PRINT("HTTP: NULL RESPONSE POINTER: \n");
   } else {
-    HTTP_DEBUG_PRINT("HTTP: NON-NULL RESPONSE POINTER: \n");
   }
 
-  HTTP_DEBUG_PRINT("HTTP: RESPONSE: \n");
   while (client->connected()) {
-    HTTP_DEBUG_PRINT(".");
 
     if (client->available()) {
-      HTTP_DEBUG_PRINT(",");
 
       char c = client->read();
-      HTTP_DEBUG_PRINT(c);
 
       if (c == ' ' && !inStatus) {
         inStatus = true;
