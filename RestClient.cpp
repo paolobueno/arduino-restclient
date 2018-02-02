@@ -2,6 +2,11 @@
 
 #define DEFAULT_MIME "application/x-www-form-urlencoded"
 
+#define STATUS_START 0
+#define STATUS_CODE 1
+#define STATUS_PRE_BODY 2
+#define STATUS_BODY 3
+
 RestClient::RestClient(const char* _host, Client& client) {
   host = _host;
   port = 80;
@@ -28,7 +33,7 @@ int RestClient::get(const char* path) {
   return request("GET", path, NULL, NULL, 0);
 }
 
-//GET path with response
+// GET path with response
 int RestClient::get(const char* path, char* response, int length) {
   return request("GET", path, NULL, response, length);
 }
@@ -39,7 +44,8 @@ int RestClient::post(const char* path, const char* body) {
 }
 
 // POST path and body with response
-int RestClient::post(const char* path, const char* body, char* response, int length) {
+int RestClient::post(const char* path, const char* body, char* response,
+                     int length) {
   return request("POST", path, body, response, length);
 }
 
@@ -49,7 +55,8 @@ int RestClient::put(const char* path, const char* body) {
 }
 
 // PUT path and body with response
-int RestClient::put(const char* path, const char* body, char* response, int length) {
+int RestClient::put(const char* path, const char* body, char* response,
+                    int length) {
   return request("PUT", path, body, response, length);
 }
 
@@ -69,13 +76,12 @@ int RestClient::del(const char* path, const char* body) {
 }
 
 // DELETE path and body with response
-int RestClient::del(const char* path, const char* body, char* response, int length) {
+int RestClient::del(const char* path, const char* body, char* response,
+                    int length) {
   return request("DELETE", path, body, response, length);
 }
 
-void RestClient::write(const char* string) {
-  client->print(string);
-}
+void RestClient::write(const char* string) { client->print(string); }
 
 RestClient& RestClient::setHeader(const char* header) {
   headers[num_headers] = header;
@@ -90,10 +96,8 @@ RestClient& RestClient::setContentType(const char* contentTypeValue) {
 
 // The mother- generic request method.
 //
-int RestClient::request(const char* method, const char* path,
-  const char* body, char* response, int length) {
-
-
+int RestClient::request(const char* method, const char* path, const char* body,
+                        char* response, int length) {
   if (!client->connect(host, port)) {
     return 0;
   }
@@ -102,7 +106,7 @@ int RestClient::request(const char* method, const char* path,
   write(" ");
   write(path);
   write(" HTTP/1.1\r\n");
-  for(int i = 0; i < num_headers; i++) {
+  for (int i = 0; i < num_headers; i++) {
     write(headers[i]);
     write("\r\n");
   }
@@ -129,12 +133,12 @@ int RestClient::request(const char* method, const char* path,
     write("\r\n");
   }
 
-  //make sure you write all those bytes.
+  // make sure you write all those bytes.
   client->flush();
 
   int statusCode = readResponse(response, length);
 
-  //cleanup
+  // cleanup
   num_headers = 0;
   client->stop();
   delay(50);
@@ -143,58 +147,50 @@ int RestClient::request(const char* method, const char* path,
 }
 
 int RestClient::readResponse(char* response, int length) {
-
   // an http request ends with a blank line
   boolean currentLineIsBlank = true;
-  boolean httpBody = false;
-  boolean inStatus = false;
-
   char statusCode[4];
-  int i = 0;
+  int statusCodeIdx = 0;
+  int writeIdx = 0;
   int code = 0;
 
   if (response) {
     memset(response, 0, length);
   }
-	int writeIdx = 0;
 
-  if (response == NULL) {
-  } else {
-  }
-
+  int status = STATUS_START;
   while (client->connected()) {
-
     if (client->available()) {
-
       char c = client->read();
-
-      if (c == ' ' && !inStatus) {
-        inStatus = true;
-      }
-
-      if (inStatus && i < 3 && c != ' ') {
-        statusCode[i] = c;
-        i++;
-      }
-      if (i == 3) {
-        statusCode[i] = '\0';
-        code = atoi(statusCode);
-      }
-
-      if (response && httpBody && writeIdx < length - 1) {
-        response[writeIdx++] = c;
-      } else {
-        if (c == '\n' && currentLineIsBlank) {
-          httpBody = true;
-        }
-
-        if (c == '\n') {
-          // you're starting a new line
-          currentLineIsBlank = true;
-        } else if (c != '\r') {
-          // you've gotten a character on the current line
-          currentLineIsBlank = false;
-        }
+      switch (status) {
+        case STATUS_START:
+          if (c == ' ') {
+            status = STATUS_CODE;
+          }
+          break;
+        case STATUS_CODE:
+          if (statusCodeIdx < 3 && c != ' ') {
+            statusCode[statusCodeIdx++] = c;
+          } else {
+            statusCode[i] = '\0';
+            code = atoi(statusCode);
+            status = STATUS_PRE_BODY;
+          }
+          break;
+        case STATUS_PRE_BODY:
+					// skip one line because of HTTP protocol
+          if (c == '\n' && currentLineIsBlank) {
+            status = STATUS_BODY;
+          } else if (c == '\n') {
+            // you're starting a new line
+            currentLineIsBlank = true;
+          }
+          break;
+        case STATUS_BODY:
+          if (response && writeIdx < length - 1) {
+            response[writeIdx++] = c;
+          }
+          break;
       }
     }
   }
