@@ -172,7 +172,7 @@ int RestClient::readResponse(char* response, int length) {
           if (statusCodeIdx < 3 && c != ' ') {
             statusCode[statusCodeIdx++] = c;
           } else {
-            statusCode[i] = '\0';
+            statusCode[statusCodeIdx] = '\0';
             code = atoi(statusCode);
             status = STATUS_PRE_BODY;
           }
